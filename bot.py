@@ -110,4 +110,4 @@ async def select_tour(call: types.CallbackQuery):
 @dp.callback_query(F.data.startswith("t:"))
 async def select_match(call: types.CallbackQuery):
     _, season, tour = call.data.split(":")
-    await call.message.edit_text(f"{tour} - O'yinni tanlang:", reply
+await call.message.edit_text(f"{tour} - O'yinni tanlang:", reply_markup=get_matches_kb(season, tour))
