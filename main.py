@@ -23,8 +23,11 @@ redis = Redis(
 
 # --- RENDER UCHUN FLASK (Health Check) ---
 flask_app = Flask(__name__)
+
 @flask_app.route('/')
-def health(): return "Bot Online!", 200
+def health():
+    # Cron-job xatosini (output too large) to'g'rilash uchun faqat qisqa matn
+    return "OK", 200
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
@@ -61,19 +64,16 @@ async def handle_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raw_data = redis.get(video_id)
         
         if raw_data:
-            # Agar ma'lumotda biz qo'shgan ajratuvchi bo'lsa
             if "|||" in str(raw_data):
                 file_id, caption = str(raw_data).split("|||", 1)
                 final_caption = caption if caption != "None" else ""
                 await update.message.reply_video(video=file_id, caption=final_caption)
             else:
-                # Eski videolar uchun (faqat file_id bo'lsa)
                 await update.message.reply_video(video=str(raw_data))
         else:
             await update.message.reply_text("Afsus bunday video hozircha yo'q.")
 
 async def handle_vid(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Faqat admin video yuklay oladi
     if update.effective_user.id == ADMIN_ID:
         waiting_video[ADMIN_ID] = {
             "file_id": update.message.video.file_id,
@@ -83,23 +83,18 @@ async def handle_vid(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- ASOSIY ISHGA TUSHIRISH ---
 async def main():
-    # Flaskni alohida oqimda ishga tushirish (Render o'chib qolmasligi uchun)
     threading.Thread(target=run_flask, daemon=True).start()
     
-    # Botni yaratish
     app = Application.builder().token(TOKEN).build()
     
-    # Handlerlarni qo'shish
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.VIDEO, handle_vid))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_msg))
 
-    # Render-da RuntimeError bermasligi uchun asinxron tsikl
     async with app:
         await app.initialize()
         await app.start()
         await app.updater.start_polling(drop_pending_updates=True)
-        # Bot to'xtab qolmasligi uchun
         while True:
             await asyncio.sleep(3600)
 
